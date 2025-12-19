@@ -1,3 +1,8 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
 # Python
 __pycache__/
 *.py[cod]
@@ -8,15 +13,13 @@ __pycache__/
 dist/
 build/
 *.egg
-
-# Virtual Environments
 .venv/
 venv/
 ENV/
 env/
 
 # Poetry
-# Keep poetry.lock for reproducible builds
+poetry.lock
 
 # Testing
 .pytest_cache/
@@ -24,6 +27,7 @@ env/
 htmlcov/
 .tox/
 *.cover
+tests/
 
 # IDEs
 .vscode/
@@ -40,14 +44,36 @@ electoral_search.log
 # Type checking
 .mypy_cache/
 .pytype/
-
-# Ruff
 .ruff_cache/
 
+# Documentation
+*.md
+!README.md
+docs/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
 # Project specific
+pdfs/
+output/
 results.json
 *.pdf
 names.txt
 
 # Claude
 .claude/
+
+# Misc
+Makefile
+LICENSE
+QUICKSTART.md
+CLAUDE.md
+PRODUCTION_IMPROVEMENTS.md

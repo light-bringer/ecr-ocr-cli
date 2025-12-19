@@ -19,6 +19,8 @@ def export_to_json(results: List[SearchResult], output_path: Path) -> None:
     """
     Export results to JSON file.
 
+    Automatically includes bbox and confidence fields if present.
+
     Args:
         results: List of search results
         output_path: Path to output JSON file
@@ -30,7 +32,9 @@ def export_to_json(results: List[SearchResult], output_path: Path) -> None:
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(results, f, ensure_ascii=False, indent=2)
 
-        logger.info(f"Exported {len(results)} results to JSON: {output_path}")
+        logger.info(
+            f"Exported {len(results)} results to JSON: {output_path}"
+        )
 
     except Exception as e:
         logger.error(f"Failed to export JSON: {e}")
@@ -40,6 +44,9 @@ def export_to_json(results: List[SearchResult], output_path: Path) -> None:
 def export_to_csv(results: List[SearchResult], output_path: Path) -> None:
     """
     Export results to CSV file.
+
+    Automatically includes bbox columns if bbox data is present:
+    - bbox_left, bbox_top, bbox_width, bbox_height, confidence
 
     Args:
         results: List of search results
@@ -59,12 +66,55 @@ def export_to_csv(results: List[SearchResult], output_path: Path) -> None:
                 logger.info(f"Exported 0 results to CSV: {output_path}")
                 return
 
-            # Write header and rows
-            fieldnames = list(results[0].keys())
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            # Determine if we have bbox data
+            has_bbox = any("bbox" in result for result in results)
+            has_confidence = any(
+                "confidence" in result for result in results
+            )
 
+            # Prepare fieldnames
+            fieldnames = ["file", "page", "name", "father"]
+            if has_bbox:
+                fieldnames.extend([
+                    "bbox_left", "bbox_top", "bbox_width", "bbox_height"
+                ])
+            if has_confidence:
+                fieldnames.append("confidence")
+
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
-            writer.writerows(results)
+
+            # Write rows with bbox data expanded
+            for result in results:
+                row = {
+                    "file": result["file"],
+                    "page": result["page"],
+                    "name": result["name"],
+                    "father": result["father"],
+                }
+
+                # Add bbox columns if present
+                if has_bbox and "bbox" in result and result["bbox"]:
+                    bbox = result["bbox"]
+                    row["bbox_left"] = bbox["left"]
+                    row["bbox_top"] = bbox["top"]
+                    row["bbox_width"] = bbox["width"]
+                    row["bbox_height"] = bbox["height"]
+                elif has_bbox:
+                    # Empty bbox data
+                    row["bbox_left"] = ""
+                    row["bbox_top"] = ""
+                    row["bbox_width"] = ""
+                    row["bbox_height"] = ""
+
+                # Add confidence if present
+                if has_confidence:
+                    row["confidence"] = (
+                        f"{result['confidence']:.2f}"
+                        if "confidence" in result else ""
+                    )
+
+                writer.writerow(row)
 
         logger.info(f"Exported {len(results)} results to CSV: {output_path}")
 

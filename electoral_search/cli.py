@@ -10,7 +10,13 @@ from typing import List, Optional, Tuple
 import typer
 from rich.console import Console
 from rich.table import Table
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeRemainingColumn
+from rich.progress import (
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    BarColumn,
+    TimeRemainingColumn
+)
 
 from .config import (
     FUZZY_THRESHOLD_DEFAULT,
@@ -22,7 +28,7 @@ from .config import (
 from .types import SearchResult
 from .validation import validate_path_security
 from .ocr import process_pdf
-from .parallel import process_pdfs_parallel, get_optimal_workers
+from .parallel import get_optimal_workers
 from .cache import ResultCache
 from .export import export_results
 
@@ -32,20 +38,26 @@ app = typer.Typer(help="Search Bengali Electoral Roll PDFs")
 
 
 # Module-level worker function for multiprocessing (must be picklable)
-def _process_pdf_worker(args: Tuple[Path, List[str], int, Optional[str], bool]) -> List[SearchResult]:
+def _process_pdf_worker(
+    args: Tuple[Path, List[str], int, Optional[str], bool, bool, float]
+) -> List[SearchResult]:
     """
     Worker function for parallel PDF processing.
 
-    This function is defined at module level to be picklable for multiprocessing.
-    Each worker process creates its own cache instance.
+    This function is defined at module level to be picklable for
+    multiprocessing. Each worker process creates its own cache instance.
 
     Args:
-        args: Tuple of (pdf_path, search_names, threshold, cache_dir, use_cache)
+        args: Tuple of (pdf_path, search_names, threshold, cache_dir,
+              use_cache, box_level, min_confidence)
 
     Returns:
         List of search results
     """
-    pdf_path, search_names, threshold, cache_dir, use_cache = args
+    (
+        pdf_path, search_names, threshold, cache_dir,
+        use_cache, box_level, min_confidence
+    ) = args
 
     # Create cache instance in worker process if needed
     cache = None
@@ -63,7 +75,10 @@ def _process_pdf_worker(args: Tuple[Path, List[str], int, Optional[str], bool]) 
     worker_stats = ProcessingStats()
 
     # Process PDF
-    results = process_pdf(pdf_path, search_names, threshold, worker_stats)
+    results = process_pdf(
+        pdf_path, search_names, threshold, worker_stats,
+        box_level, min_confidence
+    )
 
     # Cache results
     if cache:
@@ -107,7 +122,21 @@ def search(
         None, "--cache-dir", help="Cache directory (default: ~/.electoral_search_cache)"
     ),
     clear_cache: bool = typer.Option(
-        False, "--clear-cache", help="Clear cache before processing"
+        False,
+        "--clear-cache",
+        help="Clear cache before processing"
+    ),
+    box_level: bool = typer.Option(
+        False,
+        "--box-level",
+        help="Enable box-level OCR with bounding boxes"
+    ),
+    min_confidence: float = typer.Option(
+        60.0,
+        "--min-confidence",
+        help="Minimum OCR confidence threshold (0-100)",
+        min=0,
+        max=100
     ),
 ):
     """
@@ -139,6 +168,11 @@ def search(
         - Tesseract OCR (tesseract-ocr)
         - Bengali language pack (tesseract-ocr-ben)
         - Poppler utils (for pdf2image)
+
+    Box-Level OCR:
+        Use --box-level to extract bounding box coordinates
+        and OCR confidence scores for each match. This
+        enables spatial analysis and filtering by confidence.
     """
     # Setup logging
     global logger
@@ -236,8 +270,8 @@ def search(
         if parallel:
             num_workers = get_optimal_workers(workers)
             console.print(
-                f"[cyan]Processing {len(pdf_files)} PDFs with {num_workers} workers "
-                f"(parallel mode)[/cyan]"
+                f"[cyan]Processing {len(pdf_files)} PDFs with "
+                f"{num_workers} workers (parallel mode)[/cyan]"
             )
         else:
             console.print(
@@ -258,7 +292,10 @@ def search(
                     return cached_results
 
             # Process PDF
-            results = process_pdf(pdf_path, search_names, threshold, stats)
+            results = process_pdf(
+                pdf_path, search_names, threshold, stats,
+                box_level, min_confidence
+            )
 
             # Cache results
             if cache:
@@ -287,7 +324,10 @@ def search(
 
                 # Prepare arguments for each worker
                 worker_args = [
-                    (pdf, search_names, threshold, cache_dir, use_cache)
+                    (
+                        pdf, search_names, threshold, cache_dir,
+                        use_cache, box_level, min_confidence
+                    )
                     for pdf in pdf_files
                 ]
 
@@ -311,7 +351,9 @@ def search(
                             stats.matches_found += len(results)
 
                         except (ValueError, RuntimeError) as e:
-                            logger.error(f"Failed to process {pdf_path.name}: {e}")
+                            logger.error(
+                                f"Failed to process {pdf_path.name}: {e}"
+                            )
                             stats.files_failed += 1
                             stats.errors.append(f"{pdf_path.name}: {str(e)}")
 
@@ -350,19 +392,38 @@ def search(
 
         # Display results
         if all_results:
-            table = Table(title=f"Electoral Roll Matches ({len(all_results)} found)")
+            table = Table(
+                title=f"Electoral Roll Matches ({len(all_results)} found)"
+            )
             table.add_column("PDF File", style="cyan")
             table.add_column("Page", justify="right", style="magenta")
             table.add_column("Name", style="green")
             table.add_column("Father / Guardian", style="yellow")
 
+            # Add confidence column if box-level mode
+            if box_level:
+                table.add_column(
+                    "Confidence",
+                    justify="right",
+                    style="blue"
+                )
+
             for result in all_results:
-                table.add_row(
+                row_data = [
                     result["file"],
                     str(result["page"]),
                     result["name"],
                     result["father"]
-                )
+                ]
+
+                # Add confidence if box-level mode
+                if box_level and "confidence" in result:
+                    conf = result["confidence"]
+                    row_data.append(f"{conf:.1f}%" if conf else "N/A")
+                elif box_level:
+                    row_data.append("N/A")
+
+                table.add_row(*row_data)
 
             console.print(table)
 
@@ -370,10 +431,14 @@ def search(
             if output:
                 try:
                     output_path = Path(output)
-                    export_results(all_results, output_path, output_format)
+                    export_results(
+                        all_results, output_path, output_format
+                    )
                     console.print(f"[green]Results saved to {output}[/green]")
                 except Exception as e:
-                    console.print(f"[red]Failed to export results: {e}[/red]")
+                    console.print(
+                        f"[red]Failed to export results: {e}[/red]"
+                    )
                     logger.error(f"Export failed: {e}")
 
         else:

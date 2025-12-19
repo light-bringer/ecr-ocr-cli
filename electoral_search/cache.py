@@ -4,12 +4,12 @@ Result caching system for OCR operations.
 Caches OCR results based on PDF file hash to avoid reprocessing.
 """
 
-import json
 import hashlib
+import json
 import logging
-from pathlib import Path
-from typing import Optional, List, Dict
 from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Dict, List, Optional
 
 from .types import SearchResult
 
@@ -121,7 +121,7 @@ class ResultCache:
                 return None
 
             # Load cached results
-            with open(cache_path, "r", encoding="utf-8") as f:
+            with open(cache_path, encoding="utf-8") as f:
                 cache_data = json.load(f)
 
             # Verify cache version
@@ -141,6 +141,7 @@ class ResultCache:
             try:
                 cache_path.unlink()
             except Exception:
+                logger.error(f"Failed to remove corrupted cache file: {cache_path}")
                 pass
             return None
 

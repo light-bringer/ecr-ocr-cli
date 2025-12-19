@@ -36,7 +36,7 @@ def export_to_json(results: List[SearchResult], output_path: Path) -> None:
 
     except Exception as e:
         logger.error(f"Failed to export JSON: {e}")
-        raise IOError(f"Failed to export JSON: {e}")
+        raise OSError(f"Failed to export JSON: {e}")
 
 
 def export_to_csv(results: List[SearchResult], output_path: Path) -> None:
@@ -111,7 +111,7 @@ def export_to_csv(results: List[SearchResult], output_path: Path) -> None:
 
     except Exception as e:
         logger.error(f"Failed to export CSV: {e}")
-        raise IOError(f"Failed to export CSV: {e}")
+        raise OSError(f"Failed to export CSV: {e}")
 
 
 def export_results(results: List[SearchResult], output_path: Path, format: str = "auto") -> None:

@@ -4,11 +4,10 @@ Configuration management for electoral search tool.
 All configuration values can be overridden via environment variables.
 """
 
-import os
 import logging
+import os
 from dataclasses import dataclass, field
 from typing import List
-
 
 # OCR Configuration
 DPI = int(os.getenv("OCR_DPI", "350"))  # Image resolution for OCR

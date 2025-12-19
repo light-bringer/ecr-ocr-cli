@@ -9,14 +9,14 @@ from pathlib import Path
 from typing import List, Optional
 
 import pytesseract
-from pytesseract import Output
 from pdf2image import convert_from_path
 from pdf2image.exceptions import PDFPageCountError, PDFSyntaxError
+from pytesseract import Output
 
-from .config import DPI, OCR_LANG, OCR_CONFIG, MAX_PDF_PAGES, ProcessingStats
-from .types import SearchResult, BoundingBox, OCRWord
+from .config import DPI, MAX_PDF_PAGES, OCR_CONFIG, OCR_LANG, ProcessingStats
+from .text_processing import extract_voter_blocks, extract_voter_blocks_with_boxes, fuzzy_match
+from .types import BoundingBox, OCRWord, SearchResult
 from .validation import validate_pdf_file
-from .text_processing import extract_voter_blocks, fuzzy_match, extract_voter_blocks_with_boxes
 
 logger = logging.getLogger(__name__)
 
@@ -142,7 +142,7 @@ def process_pdf(
         except PDFSyntaxError:
             raise ValueError(f"Corrupted PDF file: {pdf_path.name}")
         except Exception as e:
-            raise RuntimeError(f"Failed to convert PDF to images: {e}")
+            raise RuntimeError(f"Failed to convert PDF to images: {e}") from e
 
         # Check page limit
         if len(images) > MAX_PDF_PAGES:
@@ -235,6 +235,7 @@ def process_pdf(
                     try:
                         image.close()
                     except Exception:
+                        logger.error(f"Failed to close image: {image}")
                         pass
 
         stats.files_processed += 1

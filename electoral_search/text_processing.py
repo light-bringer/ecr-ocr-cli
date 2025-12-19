@@ -4,12 +4,13 @@ Bengali text processing and pattern matching.
 Handles normalization, extraction, and fuzzy matching of Bengali text.
 """
 
-import re
 import logging
+import re
 from typing import List
+
 from rapidfuzz import fuzz
 
-from .types import VoterInfo, OCRWord, BoundingBox
+from .types import BoundingBox, OCRWord, VoterInfo
 
 logger = logging.getLogger(__name__)
 

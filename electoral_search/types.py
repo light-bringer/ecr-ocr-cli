@@ -2,7 +2,7 @@
 Type definitions for electoral search.
 """
 
-from typing import TypedDict, Optional, NotRequired
+from typing import NotRequired, Optional, TypedDict
 
 
 class BoundingBox(TypedDict):

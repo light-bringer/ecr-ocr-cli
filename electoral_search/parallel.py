@@ -8,7 +8,7 @@ import logging
 import multiprocessing as mp
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
-from typing import List, Callable, Any, Optional
+from typing import Callable, List, Optional
 
 from .config import ProcessingStats
 from .types import SearchResult

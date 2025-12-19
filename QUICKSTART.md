@@ -104,11 +104,24 @@ poetry run electoral-search search ./pdfs -n names.txt -t 75
 # Save to JSON
 poetry run electoral-search search ./pdfs -n names.txt -o results.json
 
+# Save to CSV
+poetry run electoral-search search ./pdfs -n names.txt -o results.csv
+
+# Enable box-level OCR with bounding boxes
+poetry run electoral-search search ./pdfs -n names.txt --box-level -o results.json
+
+# Filter by confidence threshold
+poetry run electoral-search search ./pdfs -n names.txt --box-level --min-confidence 80
+
 # Verbose mode for debugging
 poetry run electoral-search search ./pdfs -n names.txt -v
 
-# Combine options
-poetry run electoral-search search ./pdfs -n names.txt -t 85 -o results.json -v
+# Combine options for high-quality results
+poetry run electoral-search search ./pdfs -n names.txt \
+  --box-level \
+  --min-confidence 85 \
+  -o results.json \
+  -v
 ```
 
 ## Configuration (Optional)

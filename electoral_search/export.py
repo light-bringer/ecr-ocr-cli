@@ -32,9 +32,7 @@ def export_to_json(results: List[SearchResult], output_path: Path) -> None:
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(results, f, ensure_ascii=False, indent=2)
 
-        logger.info(
-            f"Exported {len(results)} results to JSON: {output_path}"
-        )
+        logger.info(f"Exported {len(results)} results to JSON: {output_path}")
 
     except Exception as e:
         logger.error(f"Failed to export JSON: {e}")
@@ -59,25 +57,19 @@ def export_to_csv(results: List[SearchResult], output_path: Path) -> None:
         with open(output_path, "w", encoding="utf-8", newline="") as f:
             if not results:
                 # Write header only for empty results
-                writer = csv.DictWriter(
-                    f, fieldnames=["file", "page", "name", "father"]
-                )
+                writer = csv.DictWriter(f, fieldnames=["file", "page", "name", "father"])
                 writer.writeheader()
                 logger.info(f"Exported 0 results to CSV: {output_path}")
                 return
 
             # Determine if we have bbox data
             has_bbox = any("bbox" in result for result in results)
-            has_confidence = any(
-                "confidence" in result for result in results
-            )
+            has_confidence = any("confidence" in result for result in results)
 
             # Prepare fieldnames
             fieldnames = ["file", "page", "name", "father"]
             if has_bbox:
-                fieldnames.extend([
-                    "bbox_left", "bbox_top", "bbox_width", "bbox_height"
-                ])
+                fieldnames.extend(["bbox_left", "bbox_top", "bbox_width", "bbox_height"])
             if has_confidence:
                 fieldnames.append("confidence")
 
@@ -110,8 +102,7 @@ def export_to_csv(results: List[SearchResult], output_path: Path) -> None:
                 # Add confidence if present
                 if has_confidence:
                     row["confidence"] = (
-                        f"{result['confidence']:.2f}"
-                        if "confidence" in result else ""
+                        f"{result['confidence']:.2f}" if "confidence" in result else ""
                     )
 
                 writer.writerow(row)
@@ -123,9 +114,7 @@ def export_to_csv(results: List[SearchResult], output_path: Path) -> None:
         raise IOError(f"Failed to export CSV: {e}")
 
 
-def export_results(
-    results: List[SearchResult], output_path: Path, format: str = "auto"
-) -> None:
+def export_results(results: List[SearchResult], output_path: Path, format: str = "auto") -> None:
     """
     Export results to file with auto-detection of format.
 
@@ -157,6 +146,4 @@ def export_results(
     elif format == "csv":
         export_to_csv(results, output_path)
     else:
-        raise ValueError(
-            f"Unsupported export format: {format}. Use 'json' or 'csv'."
-        )
+        raise ValueError(f"Unsupported export format: {format}. Use 'json' or 'csv'.")

@@ -16,11 +16,7 @@ from pdf2image.exceptions import PDFPageCountError, PDFSyntaxError
 from .config import DPI, OCR_LANG, OCR_CONFIG, MAX_PDF_PAGES, ProcessingStats
 from .types import SearchResult, BoundingBox, OCRWord
 from .validation import validate_pdf_file
-from .text_processing import (
-    extract_voter_blocks,
-    fuzzy_match,
-    extract_voter_blocks_with_boxes
-)
+from .text_processing import extract_voter_blocks, fuzzy_match, extract_voter_blocks_with_boxes
 
 logger = logging.getLogger(__name__)
 
@@ -42,43 +38,34 @@ def extract_ocr_data(image, min_confidence: float = 0) -> List[OCRWord]:
     try:
         # Get detailed OCR data including bounding boxes
         data = pytesseract.image_to_data(
-            image,
-            lang=OCR_LANG,
-            config=OCR_CONFIG,
-            output_type=Output.DICT,
-            timeout=30
+            image, lang=OCR_LANG, config=OCR_CONFIG, output_type=Output.DICT, timeout=30
         )
 
         ocr_words: List[OCRWord] = []
 
         # Process each detected word
-        for i in range(len(data['text'])):
-            text = data['text'][i].strip()
-            conf = float(data['conf'][i])
+        for i in range(len(data["text"])):
+            text = data["text"][i].strip()
+            conf = float(data["conf"][i])
 
             # Skip empty text or low confidence
             if not text or conf < min_confidence:
                 continue
 
             bbox = BoundingBox(
-                left=int(data['left'][i]),
-                top=int(data['top'][i]),
-                width=int(data['width'][i]),
-                height=int(data['height'][i])
+                left=int(data["left"][i]),
+                top=int(data["top"][i]),
+                width=int(data["width"][i]),
+                height=int(data["height"][i]),
             )
 
-            ocr_words.append(OCRWord(
-                text=text,
-                confidence=conf,
-                bbox=bbox
-            ))
+            ocr_words.append(OCRWord(text=text, confidence=conf, bbox=bbox))
 
         return ocr_words
 
     except pytesseract.TesseractNotFoundError:
         raise RuntimeError(
-            "Tesseract not found. Install: "
-            "apt-get install tesseract-ocr tesseract-ocr-ben"
+            "Tesseract not found. Install: apt-get install tesseract-ocr tesseract-ocr-ben"
         )
     except Exception as e:
         raise RuntimeError(f"OCR extraction failed: {e}")
@@ -98,22 +85,13 @@ def get_text_bounding_box(ocr_words: List[OCRWord]) -> Optional[BoundingBox]:
         return None
 
     # Find the extreme coordinates
-    min_left = min(word['bbox']['left'] for word in ocr_words)
-    min_top = min(word['bbox']['top'] for word in ocr_words)
-    max_right = max(
-        word['bbox']['left'] + word['bbox']['width']
-        for word in ocr_words
-    )
-    max_bottom = max(
-        word['bbox']['top'] + word['bbox']['height']
-        for word in ocr_words
-    )
+    min_left = min(word["bbox"]["left"] for word in ocr_words)
+    min_top = min(word["bbox"]["top"] for word in ocr_words)
+    max_right = max(word["bbox"]["left"] + word["bbox"]["width"] for word in ocr_words)
+    max_bottom = max(word["bbox"]["top"] + word["bbox"]["height"] for word in ocr_words)
 
     return BoundingBox(
-        left=min_left,
-        top=min_top,
-        width=max_right - min_left,
-        height=max_bottom - min_top
+        left=min_left, top=min_top, width=max_right - min_left, height=max_bottom - min_top
     )
 
 
@@ -123,7 +101,7 @@ def process_pdf(
     threshold: int,
     stats: ProcessingStats,
     box_level: bool = False,
-    min_confidence: float = 60
+    min_confidence: float = 60,
 ) -> List[SearchResult]:
     """
     Process a PDF file and search for matching names using OCR.
@@ -156,8 +134,8 @@ def process_pdf(
             images = convert_from_path(
                 str(pdf_path),
                 dpi=DPI,
-                thread_count=1,  # Limit resource usage
-                use_pdftocairo=False
+                thread_count=1,
+                use_pdftocairo=False,  # Limit resource usage
             )
         except PDFPageCountError:
             raise ValueError(f"Invalid PDF page count: {pdf_path.name}")
@@ -168,9 +146,7 @@ def process_pdf(
 
         # Check page limit
         if len(images) > MAX_PDF_PAGES:
-            logger.warning(
-                f"PDF has {len(images)} pages, limiting to {MAX_PDF_PAGES}"
-            )
+            logger.warning(f"PDF has {len(images)} pages, limiting to {MAX_PDF_PAGES}")
             images = images[:MAX_PDF_PAGES]
 
         # Process each page
@@ -180,27 +156,18 @@ def process_pdf(
                     # Box-level OCR extraction
                     ocr_words = extract_ocr_data(image, min_confidence)
                     # Reconstruct text for pattern matching
-                    text = ' '.join(
-                        word['text'] for word in ocr_words
-                    )
+                    text = " ".join(word["text"] for word in ocr_words)
 
                     stats.pages_processed += 1
 
                     # Extract voter information with bounding boxes
-                    voters = extract_voter_blocks_with_boxes(
-                        text, ocr_words
-                    )
-                    logger.debug(
-                        f"Page {page_no}: Extracted {len(voters)} "
-                        f"voters (box-level)"
-                    )
+                    voters = extract_voter_blocks_with_boxes(text, ocr_words)
+                    logger.debug(f"Page {page_no}: Extracted {len(voters)} voters (box-level)")
 
                     # Search for matches
                     for voter in voters:
                         for query in search_names:
-                            if fuzzy_match(
-                                voter["name"], query, threshold
-                            ):
+                            if fuzzy_match(voter["name"], query, threshold):
                                 # Get confidence if available
                                 avg_conf = voter.get("confidence")
                                 result = SearchResult(
@@ -209,7 +176,7 @@ def process_pdf(
                                     name=voter["name"],
                                     father=voter["father"],
                                     bbox=voter.get("name_bbox"),
-                                    confidence=avg_conf
+                                    confidence=avg_conf,
                                 )
                                 results.append(result)
                                 stats.matches_found += 1
@@ -220,33 +187,26 @@ def process_pdf(
                                         f"(confidence: {avg_conf:.1f})"
                                     )
                                 else:
-                                    logger.info(
-                                        f"Match found: {voter['name']} "
-                                        f"on page {page_no}"
-                                    )
+                                    logger.info(f"Match found: {voter['name']} on page {page_no}")
                 else:
                     # Standard text-only OCR (backward compatible)
                     text = pytesseract.image_to_string(
                         image,
                         lang=OCR_LANG,
                         config=OCR_CONFIG,
-                        timeout=30  # Timeout per page
+                        timeout=30,  # Timeout per page
                     )
 
                     stats.pages_processed += 1
 
                     # Extract voter information
                     voters = extract_voter_blocks(text)
-                    logger.debug(
-                        f"Page {page_no}: Extracted {len(voters)} voters"
-                    )
+                    logger.debug(f"Page {page_no}: Extracted {len(voters)} voters")
 
                     # Search for matches
                     for voter in voters:
                         for query in search_names:
-                            if fuzzy_match(
-                                voter["name"], query, threshold
-                            ):
+                            if fuzzy_match(voter["name"], query, threshold):
                                 result = SearchResult(
                                     file=pdf_path.name,
                                     page=page_no,
@@ -255,15 +215,11 @@ def process_pdf(
                                 )
                                 results.append(result)
                                 stats.matches_found += 1
-                                logger.info(
-                                    f"Match found: {voter['name']} "
-                                    f"on page {page_no}"
-                                )
+                                logger.info(f"Match found: {voter['name']} on page {page_no}")
 
             except pytesseract.TesseractNotFoundError:
                 raise RuntimeError(
-                    "Tesseract not found. Install: "
-                    "apt-get install tesseract-ocr tesseract-ocr-ben"
+                    "Tesseract not found. Install: apt-get install tesseract-ocr tesseract-ocr-ben"
                 )
             except RuntimeError as e:
                 if "timeout" in str(e).lower():

@@ -41,11 +41,8 @@ def setup_logging(verbose: bool = False) -> logging.Logger:
 
     logging.basicConfig(
         level=level,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.FileHandler(LOG_FILE),
-            logging.StreamHandler()
-        ]
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=[logging.FileHandler(LOG_FILE), logging.StreamHandler()],
     )
 
     logger = logging.getLogger(__name__)
@@ -57,6 +54,7 @@ def setup_logging(verbose: bool = False) -> logging.Logger:
 @dataclass
 class ProcessingStats:
     """Statistics for processing session."""
+
     files_processed: int = 0
     files_failed: int = 0
     pages_processed: int = 0

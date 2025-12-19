@@ -60,7 +60,7 @@ def validate_pdf_file(pdf_path: Path) -> None:
         raise ValueError(f"PDF file too large: {size_mb:.1f}MB (max: {MAX_PDF_SIZE_MB}MB)")
 
     # Basic file type check (magic number)
-    with open(pdf_path, 'rb') as f:
+    with open(pdf_path, "rb") as f:
         header = f.read(5)
-        if header != b'%PDF-':
+        if header != b"%PDF-":
             raise ValueError(f"File is not a valid PDF: {pdf_path}")

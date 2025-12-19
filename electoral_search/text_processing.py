@@ -15,10 +15,7 @@ logger = logging.getLogger(__name__)
 
 # Regex patterns with bounded quantifiers to prevent ReDoS
 NAME_RE = re.compile(r"নাম\s*[:：]\s*(.{1,200}?)(?:\n|$)", re.MULTILINE)
-FATHER_RE = re.compile(
-    r"(পিতার নাম|স্বামীর নাম)\s*[:：]\s*(.{1,200}?)(?:\n|$)",
-    re.MULTILINE
-)
+FATHER_RE = re.compile(r"(পিতার নাম|স্বামীর নাম)\s*[:：]\s*(.{1,200}?)(?:\n|$)", re.MULTILINE)
 
 
 def normalize_bn(text: str) -> str:
@@ -90,9 +87,7 @@ def extract_voter_blocks(text: str) -> List[VoterInfo]:
     return voters
 
 
-def extract_voter_blocks_with_boxes(
-    text: str, ocr_words: List[OCRWord]
-) -> List[VoterInfo]:
+def extract_voter_blocks_with_boxes(text: str, ocr_words: List[OCRWord]) -> List[VoterInfo]:
     """
     Extract voter information with bounding boxes from OCR word data.
 
@@ -122,24 +117,17 @@ def extract_voter_blocks_with_boxes(
     for voter_text in text_voters:
         try:
             # Find name words in OCR data
-            name_words = _find_text_words(
-                voter_text["name"], ocr_words
-            )
-            father_words = _find_text_words(
-                voter_text["father"], ocr_words
-            )
+            name_words = _find_text_words(voter_text["name"], ocr_words)
+            father_words = _find_text_words(voter_text["father"], ocr_words)
 
             # Calculate bounding boxes
             name_bbox = _get_combined_bbox(name_words) if name_words else None
-            father_bbox = _get_combined_bbox(
-                father_words
-            ) if father_words else None
+            father_bbox = _get_combined_bbox(father_words) if father_words else None
 
             # Calculate average confidence
             all_words = name_words + father_words
             avg_conf = (
-                sum(w['confidence'] for w in all_words) / len(all_words)
-                if all_words else None
+                sum(w["confidence"] for w in all_words) / len(all_words) if all_words else None
             )
 
             voter = VoterInfo(
@@ -160,18 +148,18 @@ def extract_voter_blocks_with_boxes(
         except Exception as e:
             logger.debug(f"Failed to extract bbox for voter: {e}")
             # Fall back to text-only data
-            voters.append(VoterInfo(
-                name=voter_text["name"],
-                father=voter_text["father"],
-            ))
+            voters.append(
+                VoterInfo(
+                    name=voter_text["name"],
+                    father=voter_text["father"],
+                )
+            )
             continue
 
     return voters
 
 
-def _find_text_words(
-    search_text: str, ocr_words: List[OCRWord]
-) -> List[OCRWord]:
+def _find_text_words(search_text: str, ocr_words: List[OCRWord]) -> List[OCRWord]:
     """
     Find OCR words that match the search text.
 
@@ -196,9 +184,7 @@ def _find_text_words(
         best_score = 0
 
         for word in ocr_words:
-            score = fuzz.ratio(
-                normalize_bn(token), normalize_bn(word['text'])
-            )
+            score = fuzz.ratio(normalize_bn(token), normalize_bn(word["text"]))
             if score > best_score and score >= 70:  # Threshold
                 best_score = score
                 best_match = word
@@ -222,22 +208,13 @@ def _get_combined_bbox(ocr_words: List[OCRWord]) -> BoundingBox:
     if not ocr_words:
         return BoundingBox(left=0, top=0, width=0, height=0)
 
-    min_left = min(word['bbox']['left'] for word in ocr_words)
-    min_top = min(word['bbox']['top'] for word in ocr_words)
-    max_right = max(
-        word['bbox']['left'] + word['bbox']['width']
-        for word in ocr_words
-    )
-    max_bottom = max(
-        word['bbox']['top'] + word['bbox']['height']
-        for word in ocr_words
-    )
+    min_left = min(word["bbox"]["left"] for word in ocr_words)
+    min_top = min(word["bbox"]["top"] for word in ocr_words)
+    max_right = max(word["bbox"]["left"] + word["bbox"]["width"] for word in ocr_words)
+    max_bottom = max(word["bbox"]["top"] + word["bbox"]["height"] for word in ocr_words)
 
     return BoundingBox(
-        left=min_left,
-        top=min_top,
-        width=max_right - min_left,
-        height=max_bottom - min_top
+        left=min_left, top=min_top, width=max_right - min_left, height=max_bottom - min_top
     )
 
 

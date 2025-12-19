@@ -41,7 +41,7 @@ def process_pdfs_parallel(
     pdf_files: List[Path],
     process_func: Callable[[Path], List[SearchResult]],
     max_workers: Optional[int] = None,
-    stats: Optional[ProcessingStats] = None
+    stats: Optional[ProcessingStats] = None,
 ) -> List[SearchResult]:
     """
     Process multiple PDFs in parallel using multiprocessing.
@@ -73,8 +73,7 @@ def process_pdfs_parallel(
     with ProcessPoolExecutor(max_workers=workers) as executor:
         # Submit all tasks
         future_to_pdf = {
-            executor.submit(process_func, pdf_path): pdf_path
-            for pdf_path in pdf_files
+            executor.submit(process_func, pdf_path): pdf_path for pdf_path in pdf_files
         }
 
         # Process completed tasks as they finish
@@ -85,9 +84,7 @@ def process_pdfs_parallel(
                 results = future.result()
                 all_results.extend(results)
 
-                logger.info(
-                    f"Completed {pdf_path.name}: {len(results)} matches"
-                )
+                logger.info(f"Completed {pdf_path.name}: {len(results)} matches")
 
             except Exception as e:
                 logger.error(f"Failed to process {pdf_path.name}: {e}")
@@ -95,9 +92,7 @@ def process_pdfs_parallel(
                     stats.files_failed += 1
                     stats.errors.append(f"{pdf_path.name}: {str(e)}")
 
-    logger.info(
-        f"Parallel processing complete: {len(all_results)} total matches"
-    )
+    logger.info(f"Parallel processing complete: {len(all_results)} total matches")
 
     return all_results
 

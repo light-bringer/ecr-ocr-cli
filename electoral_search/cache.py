@@ -62,9 +62,7 @@ class ResultCache:
 
         return sha256_hash.hexdigest()
 
-    def _get_cache_key(
-        self, pdf_path: Path, search_names: List[str], threshold: int
-    ) -> str:
+    def _get_cache_key(self, pdf_path: Path, search_names: List[str], threshold: int) -> str:
         """
         Generate cache key based on PDF hash and search parameters.
 
@@ -77,9 +75,7 @@ class ResultCache:
             Cache key string
         """
         file_hash = self._compute_file_hash(pdf_path)
-        names_hash = hashlib.sha256(
-            "|".join(sorted(search_names)).encode()
-        ).hexdigest()[:16]
+        names_hash = hashlib.sha256("|".join(sorted(search_names)).encode()).hexdigest()[:16]
 
         return f"{file_hash}_{names_hash}_{threshold}"
 
@@ -135,9 +131,7 @@ class ResultCache:
                 return None
 
             results = cache_data.get("results", [])
-            logger.info(
-                f"Cache hit: {pdf_path.name} ({len(results)} results)"
-            )
+            logger.info(f"Cache hit: {pdf_path.name} ({len(results)} results)")
 
             return results
 
@@ -183,9 +177,7 @@ class ResultCache:
             with open(cache_path, "w", encoding="utf-8") as f:
                 json.dump(cache_data, f, ensure_ascii=False, indent=2)
 
-            logger.info(
-                f"Cached {len(results)} results for {pdf_path.name}"
-            )
+            logger.info(f"Cached {len(results)} results for {pdf_path.name}")
 
         except Exception as e:
             logger.error(f"Error writing cache for {pdf_path.name}: {e}")

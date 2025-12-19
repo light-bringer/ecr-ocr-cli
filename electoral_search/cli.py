@@ -10,20 +10,14 @@ from typing import List, Optional, Tuple
 import typer
 from rich.console import Console
 from rich.table import Table
-from rich.progress import (
-    Progress,
-    SpinnerColumn,
-    TextColumn,
-    BarColumn,
-    TimeRemainingColumn
-)
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeRemainingColumn
 
 from .config import (
     FUZZY_THRESHOLD_DEFAULT,
     MAX_NAMES_FILE_SIZE_MB,
     MAX_SEARCH_NAMES,
     ProcessingStats,
-    setup_logging
+    setup_logging,
 )
 from .types import SearchResult
 from .validation import validate_path_security
@@ -39,7 +33,7 @@ app = typer.Typer(help="Search Bengali Electoral Roll PDFs")
 
 # Module-level worker function for multiprocessing (must be picklable)
 def _process_pdf_worker(
-    args: Tuple[Path, List[str], int, Optional[str], bool, bool, float]
+    args: Tuple[Path, List[str], int, Optional[str], bool, bool, float],
 ) -> List[SearchResult]:
     """
     Worker function for parallel PDF processing.
@@ -54,10 +48,7 @@ def _process_pdf_worker(
     Returns:
         List of search results
     """
-    (
-        pdf_path, search_names, threshold, cache_dir,
-        use_cache, box_level, min_confidence
-    ) = args
+    (pdf_path, search_names, threshold, cache_dir, use_cache, box_level, min_confidence) = args
 
     # Create cache instance in worker process if needed
     cache = None
@@ -76,8 +67,7 @@ def _process_pdf_worker(
 
     # Process PDF
     results = process_pdf(
-        pdf_path, search_names, threshold, worker_stats,
-        box_level, min_confidence
+        pdf_path, search_names, threshold, worker_stats, box_level, min_confidence
     )
 
     # Cache results
@@ -95,14 +85,13 @@ def search(
     ),
     threshold: int = typer.Option(
         FUZZY_THRESHOLD_DEFAULT,
-        "--threshold", "-t",
+        "--threshold",
+        "-t",
         help="Fuzzy match threshold (0-100)",
         min=0,
-        max=100
+        max=100,
     ),
-    verbose: bool = typer.Option(
-        False, "--verbose", "-v", help="Enable verbose logging"
-    ),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose logging"),
     output: Optional[str] = typer.Option(
         None, "--output", "-o", help="Save results to file (JSON or CSV based on extension)"
     ),
@@ -121,22 +110,12 @@ def search(
     cache_dir: Optional[str] = typer.Option(
         None, "--cache-dir", help="Cache directory (default: ~/.electoral_search_cache)"
     ),
-    clear_cache: bool = typer.Option(
-        False,
-        "--clear-cache",
-        help="Clear cache before processing"
-    ),
+    clear_cache: bool = typer.Option(False, "--clear-cache", help="Clear cache before processing"),
     box_level: bool = typer.Option(
-        False,
-        "--box-level",
-        help="Enable box-level OCR with bounding boxes"
+        False, "--box-level", help="Enable box-level OCR with bounding boxes"
     ),
     min_confidence: float = typer.Option(
-        60.0,
-        "--min-confidence",
-        help="Minimum OCR confidence threshold (0-100)",
-        min=0,
-        max=100
+        60.0, "--min-confidence", help="Minimum OCR confidence threshold (0-100)", min=0, max=100
     ),
 ):
     """
@@ -274,9 +253,7 @@ def search(
                 f"{num_workers} workers (parallel mode)[/cyan]"
             )
         else:
-            console.print(
-                f"[cyan]Processing {len(pdf_files)} PDFs (sequential mode)[/cyan]"
-            )
+            console.print(f"[cyan]Processing {len(pdf_files)} PDFs (sequential mode)[/cyan]")
 
         # Process PDFs with progress bar
         all_results: List[SearchResult] = []
@@ -293,8 +270,7 @@ def search(
 
             # Process PDF
             results = process_pdf(
-                pdf_path, search_names, threshold, stats,
-                box_level, min_confidence
+                pdf_path, search_names, threshold, stats, box_level, min_confidence
             )
 
             # Cache results
@@ -309,12 +285,9 @@ def search(
             BarColumn(),
             TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
             TimeRemainingColumn(),
-            console=console
+            console=console,
         ) as progress:
-            task = progress.add_task(
-                f"Processing {len(pdf_files)} PDFs...",
-                total=len(pdf_files)
-            )
+            task = progress.add_task(f"Processing {len(pdf_files)} PDFs...", total=len(pdf_files))
 
             if parallel and len(pdf_files) > 1:
                 # Parallel processing using module-level worker
@@ -324,25 +297,18 @@ def search(
 
                 # Prepare arguments for each worker
                 worker_args = [
-                    (
-                        pdf, search_names, threshold, cache_dir,
-                        use_cache, box_level, min_confidence
-                    )
+                    (pdf, search_names, threshold, cache_dir, use_cache, box_level, min_confidence)
                     for pdf in pdf_files
                 ]
 
                 with ProcessPoolExecutor(max_workers=num_workers) as executor:
                     future_to_pdf = {
-                        executor.submit(_process_pdf_worker, args): args[0]
-                        for args in worker_args
+                        executor.submit(_process_pdf_worker, args): args[0] for args in worker_args
                     }
 
                     for future in as_completed(future_to_pdf):
                         pdf_path = future_to_pdf[future]
-                        progress.update(
-                            task,
-                            description=f"Processing {pdf_path.name}..."
-                        )
+                        progress.update(task, description=f"Processing {pdf_path.name}...")
 
                         try:
                             results = future.result()
@@ -351,9 +317,7 @@ def search(
                             stats.matches_found += len(results)
 
                         except (ValueError, RuntimeError) as e:
-                            logger.error(
-                                f"Failed to process {pdf_path.name}: {e}"
-                            )
+                            logger.error(f"Failed to process {pdf_path.name}: {e}")
                             stats.files_failed += 1
                             stats.errors.append(f"{pdf_path.name}: {str(e)}")
 
@@ -368,10 +332,7 @@ def search(
             else:
                 # Sequential processing
                 for pdf_path in pdf_files:
-                    progress.update(
-                        task,
-                        description=f"Processing {pdf_path.name}..."
-                    )
+                    progress.update(task, description=f"Processing {pdf_path.name}...")
 
                     try:
                         results = process_with_cache(pdf_path)
@@ -392,9 +353,7 @@ def search(
 
         # Display results
         if all_results:
-            table = Table(
-                title=f"Electoral Roll Matches ({len(all_results)} found)"
-            )
+            table = Table(title=f"Electoral Roll Matches ({len(all_results)} found)")
             table.add_column("PDF File", style="cyan")
             table.add_column("Page", justify="right", style="magenta")
             table.add_column("Name", style="green")
@@ -402,19 +361,10 @@ def search(
 
             # Add confidence column if box-level mode
             if box_level:
-                table.add_column(
-                    "Confidence",
-                    justify="right",
-                    style="blue"
-                )
+                table.add_column("Confidence", justify="right", style="blue")
 
             for result in all_results:
-                row_data = [
-                    result["file"],
-                    str(result["page"]),
-                    result["name"],
-                    result["father"]
-                ]
+                row_data = [result["file"], str(result["page"]), result["name"], result["father"]]
 
                 # Add confidence if box-level mode
                 if box_level and "confidence" in result:
@@ -431,14 +381,10 @@ def search(
             if output:
                 try:
                     output_path = Path(output)
-                    export_results(
-                        all_results, output_path, output_format
-                    )
+                    export_results(all_results, output_path, output_format)
                     console.print(f"[green]Results saved to {output}[/green]")
                 except Exception as e:
-                    console.print(
-                        f"[red]Failed to export results: {e}[/red]"
-                    )
+                    console.print(f"[red]Failed to export results: {e}[/red]")
                     logger.error(f"Export failed: {e}")
 
         else:

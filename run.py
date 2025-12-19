@@ -26,7 +26,7 @@ Examples:
     python run.py search ./pdfs -n names.txt -v
 
 Requirements:
-    - Python 3.14+
+    - Python 3.13+
     - Tesseract OCR with Bengali language support
     - Poppler utilities (for PDF processing)
 
